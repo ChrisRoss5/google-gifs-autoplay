@@ -1,0 +1,12 @@
+{
+  "manifest_version": 2,
+
+  "author": "Kristijan Rosandić",
+  "name": "Google gifs autoplay",
+  "description": "Autoplays gifs on google search images.",
+  "version": "1",
+
+  "permissions": ["webRequest", "webRequestBlocking", "*://www.google.com/search*"],
+
+  "background": {"scripts": ["background.js"]}
+}
