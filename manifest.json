@@ -4,7 +4,7 @@
   "author": "Kristijan Rosandić",
   "name": "Google gifs autoplay",
   "description": "Autoplays gifs on google search images.",
-  "version": "1.1",
+  "version": "1.2",
 
   "icons": {"128": "images/icon-128.png"},
   "browser_action": {"default_icon": "images/icon-19.png"},
