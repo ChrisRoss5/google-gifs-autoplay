@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "author": "Kristijan Rosandić",
-  "name": "Google gifs autoplay",
-  "description": "Autoplays gifs on google images.",
+  "name": "Gifs autoplay for Google™",
+  "description": "Autoplays gifs on Google™ Search Images.",
   "version": "1.3",
   "icons": {
     "128": "images/icon-128.png"
