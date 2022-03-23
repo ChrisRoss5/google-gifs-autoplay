@@ -1,0 +1,7 @@
+form[action="/search"] li {
+  cursor: pointer;
+}
+
+form[action="/search"]:active [style="display: none;"] {
+  display: revert !important;
+}
