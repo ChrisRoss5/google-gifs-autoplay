@@ -404,5 +404,15 @@
   "action": {
     "default_icon": "images/icon-64.png",
     "default_popup": "popup/index.html"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "/images/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
