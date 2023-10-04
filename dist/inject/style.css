@@ -1,7 +1,0 @@
-form[action="/search"]#sf li {
-  cursor: pointer;
-}
-
-form[action="/search"]#sf:active [style="display: none;"] {
-  display: revert !important;
-}
