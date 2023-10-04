@@ -27,6 +27,7 @@ function main() {
   const searchResultsContainer = document.querySelector(".islrc");
   if (!searchResultsContainer)
     return log("Search results container not found!", true);
+  const sideResultsContainer = document.querySelector("#islsp");
 
   addGifsButton();
   updateSearchResults(searchResultsContainer);
@@ -38,7 +39,15 @@ function main() {
           updateSearchResults(child);
   });
 
+  const sideResultsObserver = new MutationObserver(() => {
+    const lists = sideResultsContainer!.querySelectorAll("[role=list]");
+    lists.forEach(updateSearchResults);
+  });
+
   resultsObserver.observe(searchResultsContainer, { childList: true });
+  if (sideResultsContainer)
+    sideResultsObserver.observe(sideResultsContainer, { childList: true, subtree: true });
+  else log("Side results container not found!", true);
 }
 
 function updateSearchResults(searchResultsContainer: Element) {
