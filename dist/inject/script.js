@@ -64,50 +64,29 @@ function updateSearchResults(searchResultsContainer) {
         const img = a === null || a === void 0 ? void 0 : a.querySelector("img");
         if (!a || !img)
             continue;
-        let originalSrc;
-        let gifSrc;
-        const initSrcObserver = () => srcObserver.observe(img, {
-            attributeFilter: ["src"],
-            attributeOldValue: true,
-        });
         const hrefObserver = new MutationObserver(() => {
             const decodedUrl = decodeURIComponent(a.href);
             const startIdx = decodedUrl.indexOf("=http");
             let endIdx = decodedUrl.indexOf(".gif&");
             if (endIdx == -1)
                 endIdx = decodedUrl.lastIndexOf(".gif");
-            gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
+            const gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
             if (!gifSrc)
                 return;
             hrefObserver.disconnect();
-            originalSrc = img.src;
-            if (originalSrc)
-                setGif();
-            initSrcObserver();
-        });
-        // Keeping the src attribute immutable if a gif has been set.
-        // Similar to Object.freeze() but for HTML elements.
-        const srcObserver = new MutationObserver((mutations) => {
-            const target = mutations[0].target;
-            srcObserver.disconnect();
-            if (!originalSrc) {
-                originalSrc = target.src;
-                setGif();
-            }
-            else {
-                target.src = img.dataset.src = mutations[0].oldValue;
-            }
-            initSrcObserver();
-        });
-        const setGif = () => {
+            const imgGif = document.createElement("img");
+            imgGif.style.setProperty("position", "absolute", "important");
+            imgGif.style.setProperty("top", "0", "important");
+            imgGif.style.setProperty("left", "0", "important");
+            imgGif.style.setProperty("width", "100%", "important");
+            imgGif.style.setProperty("height", "100%", "important");
+            imgGif.style.setProperty("pointer-events", "none", "important");
+            imgGif.loading = "lazy";
+            imgGif.src = gifSrc;
+            imgGif.onerror = () => imgGif.remove();
+            img.insertAdjacentElement("afterend", imgGif);
             img.loading = "lazy";
-            img.src = img.dataset.src = gifSrc;
-            img.onerror = () => {
-                srcObserver.disconnect();
-                img.onerror = null;
-                img.src = img.dataset.src = originalSrc;
-            };
-        };
+        });
         hrefObserver.observe(a, { attributeFilter: ["href"] });
         a.dispatchEvent(mouseEvent);
     }
