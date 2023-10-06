@@ -5,9 +5,11 @@ const isImageSearch = regexFilter.test(location.href);
 const mouseEvent = new MouseEvent("mousedown", {
   bubbles: true,
 });
+const visitedSearchResults: Element[] = [];
 
 if (isImageSearch) {
   log("Image search detected.");
+
   chrome.storage.sync.get("enabled", ({ enabled }: { enabled?: boolean }) => {
     if (enabled === undefined) {
       chrome.storage.sync.set({ enabled: true });
@@ -24,73 +26,88 @@ if (isImageSearch) {
 }
 
 function main() {
-  const searchResultsContainer = document.querySelector(".islrc");
-  if (!searchResultsContainer)
-    return log("Search results container not found!", true);
-  const sideResultsContainer = document.querySelector("#islsp");
-
   addGifsButton();
-  updateSearchResults(searchResultsContainer);
-
-  const resultsObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations)
-      for (const child of mutation.addedNodes)
-        if (child instanceof HTMLElement && child.classList.contains("isnpr"))
-          updateSearchResults(child);
-  });
-
-  const sideResultsObserver = new MutationObserver(() => {
-    const lists = sideResultsContainer!.querySelectorAll("[role=list]");
-    lists.forEach(updateSearchResults);
-  });
-
-  resultsObserver.observe(searchResultsContainer, { childList: true });
-  if (sideResultsContainer)
-    sideResultsObserver.observe(sideResultsContainer, { childList: true, subtree: true });
-  else log("Side results container not found!", true);
+  observerSolution();
 }
 
-function updateSearchResults(searchResultsContainer: Element) {
-  for (const item of searchResultsContainer.children) {
-    if (item.classList.contains("isnpr")) {
-      updateSearchResults(item);
-      continue;
-    }
-    const a = item.querySelector("a");
-    const img = a?.querySelector("img");
-    if (!a || !img) continue;
+function observerSolution() {
+  const searchResultsContainer = document.querySelector(".islrc");
+  const sideResultsContainer = document.querySelector("#islsp");
+  const searchResultsObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations)
+      for (const container of mutation.addedNodes)
+        if (container instanceof HTMLElement) updateSearchResults(container);
+  });
+  const sideResultsObserver = new MutationObserver(() => {
+    updateSearchResults(sideResultsContainer);
+  });
 
-    const hrefObserver = new MutationObserver(() => {
-      const decodedUrl = decodeURIComponent(a.href);
-      const startIdx = decodedUrl.indexOf("=http");
-      let endIdx = decodedUrl.indexOf(".gif&");
-      if (endIdx == -1) endIdx = decodedUrl.lastIndexOf(".gif");
-      const gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
-      if (!gifSrc) return;
-      hrefObserver.disconnect();
-      const imgGif = document.createElement("img");
-      imgGif.style.setProperty("position", "absolute", "important");
-      imgGif.style.setProperty("top", "0", "important");
-      imgGif.style.setProperty("left", "0", "important");
-      imgGif.style.setProperty("width", "100%", "important");
-      imgGif.style.setProperty("height", "100%", "important");
-      imgGif.style.setProperty("pointer-events", "none", "important");
-      imgGif.loading = "lazy";
-      imgGif.src = gifSrc;
-      imgGif.onerror = () => imgGif.remove();
-      img.insertAdjacentElement("afterend", imgGif);
-      img.loading = "lazy";
+  if (searchResultsContainer)
+    searchResultsObserver.observe(searchResultsContainer, { childList: true });
+  else log("Search results container not found!", true);
+
+  if (sideResultsContainer)
+    sideResultsObserver.observe(sideResultsContainer, {
+      childList: true,
+      subtree: true,
     });
+  else log("Side results container not found!", true);
 
-    hrefObserver.observe(a, { attributeFilter: ["href"] });
+  if (searchResultsContainer && sideResultsContainer)
+    updateSearchResults(searchResultsContainer);
+  else intervalSolution(); // Fallback
+}
 
-    a.dispatchEvent(mouseEvent);
-  }
+function intervalSolution() {
+  setInterval(updateSearchResults, 1000);
+}
+
+function updateSearchResults(container: Document | Element | null = document) {
+  container
+    ?.querySelectorAll<HTMLAnchorElement>("a.islib")
+    .forEach(updateSearchResult);
+}
+
+function updateSearchResult(searchResult: HTMLAnchorElement) {
+  if (visitedSearchResults.includes(searchResult)) return;
+  visitedSearchResults.push(searchResult);
+
+  const img = searchResult.querySelector("img");
+  if (!img) return;
+
+  const hrefObserver = new MutationObserver(() => {
+    const decodedUrl = decodeURIComponent(searchResult.href);
+    const startIdx = decodedUrl.indexOf("=http");
+    let endIdx = decodedUrl.indexOf(".gif&");
+    if (endIdx == -1) endIdx = decodedUrl.lastIndexOf(".gif");
+    const gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
+    if (!gifSrc) return;
+    hrefObserver.disconnect();
+    img.insertAdjacentElement("afterend", createGif(gifSrc));
+    img.loading = "lazy";
+  });
+
+  hrefObserver.observe(searchResult, { attributeFilter: ["href"] });
+  searchResult.dispatchEvent(mouseEvent);
+}
+
+function createGif(src: string) {
+  const gif = document.createElement("img");
+  gif.style.setProperty("position", "absolute", "important");
+  gif.style.setProperty("top", "0", "important");
+  gif.style.setProperty("left", "0", "important");
+  gif.style.setProperty("width", "100%", "important");
+  gif.style.setProperty("height", "100%", "important");
+  gif.style.setProperty("pointer-events", "none", "important");
+  gif.loading = "lazy";
+  gif.src = src;
+  gif.onerror = () => gif.remove();
+  return gif;
 }
 
 async function addGifsButton() {
-  const gifsParam = "&tbs=itp:animated";
-  if (location.href.includes(gifsParam)) return;
+  const gifsSearchParam = "&tbs=itp:animated";
+  if (location.href.includes(gifsSearchParam)) return;
 
   const activeItem = document.querySelector("[aria-current=page]");
   const nextItem = activeItem?.nextElementSibling;
@@ -102,7 +119,7 @@ async function addGifsButton() {
   img.style.height = "1rem";
   clone.textContent = "";
   clone.appendChild(img);
-  clone.href = location.href + gifsParam;
+  clone.href = location.href + gifsSearchParam;
   activeItem.insertAdjacentElement("afterend", clone);
 }
 

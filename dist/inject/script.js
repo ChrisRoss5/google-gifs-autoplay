@@ -13,6 +13,7 @@ const isImageSearch = regexFilter.test(location.href);
 const mouseEvent = new MouseEvent("mousedown", {
     bubbles: true,
 });
+const visitedSearchResults = [];
 if (isImageSearch) {
     log("Image search detected.");
     chrome.storage.sync.get("enabled", ({ enabled }) => {
@@ -32,69 +33,83 @@ if (isImageSearch) {
     });
 }
 function main() {
-    const searchResultsContainer = document.querySelector(".islrc");
-    if (!searchResultsContainer)
-        return log("Search results container not found!", true);
-    const sideResultsContainer = document.querySelector("#islsp");
     addGifsButton();
-    updateSearchResults(searchResultsContainer);
-    const resultsObserver = new MutationObserver((mutations) => {
+    observerSolution();
+}
+function observerSolution() {
+    const searchResultsContainer = document.querySelector(".islrc");
+    const sideResultsContainer = document.querySelector("#islsp");
+    const searchResultsObserver = new MutationObserver((mutations) => {
         for (const mutation of mutations)
-            for (const child of mutation.addedNodes)
-                if (child instanceof HTMLElement && child.classList.contains("isnpr"))
-                    updateSearchResults(child);
+            for (const container of mutation.addedNodes)
+                if (container instanceof HTMLElement)
+                    updateSearchResults(container);
     });
     const sideResultsObserver = new MutationObserver(() => {
-        const lists = sideResultsContainer.querySelectorAll("[role=list]");
-        lists.forEach(updateSearchResults);
+        updateSearchResults(sideResultsContainer);
     });
-    resultsObserver.observe(searchResultsContainer, { childList: true });
+    if (searchResultsContainer)
+        searchResultsObserver.observe(searchResultsContainer, { childList: true });
+    else
+        log("Search results container not found!", true);
     if (sideResultsContainer)
-        sideResultsObserver.observe(sideResultsContainer, { childList: true, subtree: true });
+        sideResultsObserver.observe(sideResultsContainer, {
+            childList: true,
+            subtree: true,
+        });
     else
         log("Side results container not found!", true);
+    if (searchResultsContainer && sideResultsContainer)
+        updateSearchResults(searchResultsContainer);
+    else
+        intervalSolution(); // Fallback
 }
-function updateSearchResults(searchResultsContainer) {
-    for (const item of searchResultsContainer.children) {
-        if (item.classList.contains("isnpr")) {
-            updateSearchResults(item);
-            continue;
-        }
-        const a = item.querySelector("a");
-        const img = a === null || a === void 0 ? void 0 : a.querySelector("img");
-        if (!a || !img)
-            continue;
-        const hrefObserver = new MutationObserver(() => {
-            const decodedUrl = decodeURIComponent(a.href);
-            const startIdx = decodedUrl.indexOf("=http");
-            let endIdx = decodedUrl.indexOf(".gif&");
-            if (endIdx == -1)
-                endIdx = decodedUrl.lastIndexOf(".gif");
-            const gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
-            if (!gifSrc)
-                return;
-            hrefObserver.disconnect();
-            const imgGif = document.createElement("img");
-            imgGif.style.setProperty("position", "absolute", "important");
-            imgGif.style.setProperty("top", "0", "important");
-            imgGif.style.setProperty("left", "0", "important");
-            imgGif.style.setProperty("width", "100%", "important");
-            imgGif.style.setProperty("height", "100%", "important");
-            imgGif.style.setProperty("pointer-events", "none", "important");
-            imgGif.loading = "lazy";
-            imgGif.src = gifSrc;
-            imgGif.onerror = () => imgGif.remove();
-            img.insertAdjacentElement("afterend", imgGif);
-            img.loading = "lazy";
-        });
-        hrefObserver.observe(a, { attributeFilter: ["href"] });
-        a.dispatchEvent(mouseEvent);
-    }
+function intervalSolution() {
+    setInterval(updateSearchResults, 1000);
+}
+function updateSearchResults(container = document) {
+    container === null || container === void 0 ? void 0 : container.querySelectorAll("a.islib").forEach(updateSearchResult);
+}
+function updateSearchResult(searchResult) {
+    if (visitedSearchResults.includes(searchResult))
+        return;
+    visitedSearchResults.push(searchResult);
+    const img = searchResult.querySelector("img");
+    if (!img)
+        return;
+    const hrefObserver = new MutationObserver(() => {
+        const decodedUrl = decodeURIComponent(searchResult.href);
+        const startIdx = decodedUrl.indexOf("=http");
+        let endIdx = decodedUrl.indexOf(".gif&");
+        if (endIdx == -1)
+            endIdx = decodedUrl.lastIndexOf(".gif");
+        const gifSrc = decodedUrl.slice(startIdx + 1, endIdx + 4);
+        if (!gifSrc)
+            return;
+        hrefObserver.disconnect();
+        img.insertAdjacentElement("afterend", createGif(gifSrc));
+        img.loading = "lazy";
+    });
+    hrefObserver.observe(searchResult, { attributeFilter: ["href"] });
+    searchResult.dispatchEvent(mouseEvent);
+}
+function createGif(src) {
+    const gif = document.createElement("img");
+    gif.style.setProperty("position", "absolute", "important");
+    gif.style.setProperty("top", "0", "important");
+    gif.style.setProperty("left", "0", "important");
+    gif.style.setProperty("width", "100%", "important");
+    gif.style.setProperty("height", "100%", "important");
+    gif.style.setProperty("pointer-events", "none", "important");
+    gif.loading = "lazy";
+    gif.src = src;
+    gif.onerror = () => gif.remove();
+    return gif;
 }
 function addGifsButton() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gifsParam = "&tbs=itp:animated";
-        if (location.href.includes(gifsParam))
+        const gifsSearchParam = "&tbs=itp:animated";
+        if (location.href.includes(gifsSearchParam))
             return;
         const activeItem = document.querySelector("[aria-current=page]");
         const nextItem = activeItem === null || activeItem === void 0 ? void 0 : activeItem.nextElementSibling;
@@ -106,7 +121,7 @@ function addGifsButton() {
         img.style.height = "1rem";
         clone.textContent = "";
         clone.appendChild(img);
-        clone.href = location.href + gifsParam;
+        clone.href = location.href + gifsSearchParam;
         activeItem.insertAdjacentElement("afterend", clone);
     });
 }
