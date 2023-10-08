@@ -98,7 +98,6 @@ function createGif(src: string) {
   gif.style.setProperty("left", "0", "important");
   gif.style.setProperty("width", "100%", "important");
   gif.style.setProperty("height", "100%", "important");
-  gif.style.setProperty("pointer-events", "none", "important");
   gif.loading = "lazy";
   gif.src = src;
   gif.onerror = () => gif.remove();

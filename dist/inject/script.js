@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-Object.defineProperty(exports, "__esModule", { value: true });
 const regexFilter = /client=img|tbm=isch|VisualFrontendUi/;
 const isImageSearch = regexFilter.test(location.href);
 const mouseEvent = new MouseEvent("mousedown", {
@@ -101,7 +100,6 @@ function createGif(src) {
     gif.style.setProperty("left", "0", "important");
     gif.style.setProperty("width", "100%", "important");
     gif.style.setProperty("height", "100%", "important");
-    gif.style.setProperty("pointer-events", "none", "important");
     gif.loading = "lazy";
     gif.src = src;
     gif.onerror = () => gif.remove();
