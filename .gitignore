@@ -1,3 +1,10 @@
 /!ASSETS
 *.zip
 _metadata
+
+# firefox
+firefox/*
+!firefox/manifest.json
+!firefox/popup
+firefox/popup/*
+!firefox/popup/index.html
