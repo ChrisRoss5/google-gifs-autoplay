@@ -1,6 +1,7 @@
 /!ASSETS
 *.zip
 _metadata
+node_modules
 
 # firefox
 firefox/*

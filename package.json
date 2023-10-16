@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@types/chrome": "^0.0.246"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}
