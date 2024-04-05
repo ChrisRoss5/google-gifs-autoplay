@@ -6,7 +6,7 @@ window.XMLHttpRequest.prototype.open = function (method, url) {
     this.addEventListener("load", function () {
         if (url instanceof URL)
             url = url.href;
-        if (!url.includes("batch"))
+        if (!url.includes("MoreResultsContainer"))
             return;
         const type = "GIFS_AUTOPLAY";
         const text = this.responseText;

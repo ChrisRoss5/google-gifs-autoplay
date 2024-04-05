@@ -1,14 +1,11 @@
 // ExecutionWorld: "ISOLATED"
 // Run at: "document_start"
 
-let missingContainers = false;
+/* XHR LISTENER INJECTION AND BATCH DATA STRING SEARCHING
+
+// This way we can listen for messages from the page's XHR requests.
+// For future implementation on mobile devices...
 let gifsBatchData = "";
-
-const mouseEvent = new MouseEvent("mousedown", {
-  bubbles: true,
-});
-
-/* -------------------------------------- */
 
 (function injectXhr() {
   const s = document.createElement("script");
@@ -20,19 +17,22 @@ const mouseEvent = new MouseEvent("mousedown", {
 window.addEventListener("message", (event) => {
   if (event.data.type != "GIFS_AUTOPLAY") return;
   gifsBatchData += event.data.text;
-  if (missingContainers) updateSearchResults();
+  updateSearchResults();
 });
 
-/* -------------------------------------- */
+*/
 
 chrome.storage.sync.get("enabled", ({ enabled }: { enabled?: boolean }) => {
-  const regexFilter = /client=img|tbm=isch|VisualFrontendUi|imgres/;
+  /* Old regex: /client=img|tbm=isch|VisualFrontendUi|imgres/;
+  New Example:
+  https://www.google.com/search?q=gifs&sca_esv=84c550665db3d809&sca_upv=1&udm=2&biw=1078&bih=983&sxsrf=ACQVn09pOPXM0BOqaZWt9DTChQcyahfKSA%3A1712237442629&ei=gqsOZtHKJdmXxc8P4u2k8Ak&ved=0ahUKEwjRk6fE1aiFAxXZS_EDHeI2CZ4Q4dUDCBA&uact=5&oq=gifs&gs_lp=Egxnd3Mtd2l6LXNlcnAiBGdpZnNIAFAAWABwAHgAkAEAmAEAoAEAqgEAuAEDyAEAmAIAoAIAmAMAkgcAoAcA&sclient=gws-wiz-serp
+  */
+  const regexFilter = /\/search/;
   const isImageSearch = regexFilter.test(location.href);
   if (!isImageSearch) return;
-  customLog("Image search detected.");
   if (enabled === undefined) {
-    chrome.storage.sync.set({ enabled: true });
     enabled = true;
+    chrome.storage.sync.set({ enabled });
   }
   customLog("Extension " + (enabled ? "enabled." : "disabled."));
   if (!enabled) return;
@@ -47,22 +47,30 @@ chrome.runtime.onMessage.addListener(({ enabled }: { enabled: boolean }) => {
 
 /* -------------------------------------- */
 
+const mouseEvents = ["mouseover", "mousedown"].map(
+  (type) => new MouseEvent(type, { bubbles: true })
+);
+
+let searchResultsContainer: HTMLDivElement;
+let sideResultsContainer: HTMLDivElement;
+
 function main() {
-  addGifsButton();
-  loadGifsBatchData();
+  searchResultsContainer = document.querySelector("[jscontroller='XW992c']")!;
+  sideResultsContainer = document.querySelector("#TWfxFb")!;
+  if (searchResultsContainer) addGifsButton();
+  // loadGifsBatchData();
   observerSolution();
+  intervalSolution(3000);
   updateSearchResults();
 }
 
-function loadGifsBatchData() {
+/* function loadGifsBatchData() {
   document.querySelectorAll("script").forEach((script) => {
     gifsBatchData += script.textContent || "";
   });
-}
+} */
 
 function observerSolution() {
-  const searchResultsContainer = document.querySelector(".islrc");
-  const sideResultsContainer = document.querySelector("#islsp");
   const searchResultsObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations)
       for (const container of mutation.addedNodes)
@@ -71,87 +79,70 @@ function observerSolution() {
   const sideResultsObserver = new MutationObserver(() => {
     updateSearchResults(sideResultsContainer);
   });
-
-  if (searchResultsContainer) {
+  if (searchResultsContainer)
     searchResultsObserver.observe(searchResultsContainer, {
       childList: true,
     });
-    updateSearchResults(searchResultsContainer);
-  } else customLog("Search results container not found!");
-
-  if (sideResultsContainer) {
+  if (sideResultsContainer)
     sideResultsObserver.observe(sideResultsContainer, {
       childList: true,
       subtree: true,
     });
-    updateSearchResults(sideResultsContainer);
-  } else customLog("Side results container not found!");
-
-  if (!searchResultsContainer || !sideResultsContainer) {
-    missingContainers = true;
-    intervalSolution();
-  }
 }
 
-function intervalSolution() {
-  setInterval(updateSearchResults, 3000);
+function intervalSolution(interval: number) {
+  setInterval(updateSearchResults, interval);
 }
 
 function updateSearchResults(container: Document | Element | null = document) {
-  //const tmp = container == document ? "document" : "container";
-  //customLog(`Executing updateSearchResults() on ${tmp}`);
+  // const tmp = container == document ? "document" : "container";
+  // customLog(`Executing updateSearchResults() on ${tmp}`);
   container
-    ?.querySelectorAll<HTMLAnchorElement>("a.islib")
+    ?.querySelectorAll<HTMLImageElement>("a img")
     .forEach(updateSearchResult);
 }
 
-function updateSearchResult(searchResult: HTMLAnchorElement) {
-  const isUpdated = () => !!searchResult.querySelector(".gifs-autoplay-gif");
-  if (isUpdated()) return;
-
-  const img = searchResult.querySelector("img");
-  if (!img) return;
-  const container = searchResult.closest("[data-id]");
-  const id = container?.getAttribute("data-id");
-  const gifSrc = id ? findGifFromBatch(id) : undefined;
+function updateSearchResult(image: HTMLImageElement) {
+  const a = image.closest("a");
+  if (!a || a.querySelector(".gifs-autoplay-gif")) return;
 
   const insertGif = (gifSrc: string) => {
-    img.insertAdjacentElement("afterend", createGif(gifSrc));
-    img.loading = "lazy";
+    image.insertAdjacentElement("afterend", createGif(gifSrc));
+    image.loading = "lazy";
+    image.parentElement?.style.setProperty("position", "relative", "important");
   };
 
-  if (gifSrc) return insertGif(gifSrc);
+  /* const container = image.closest("[jscontroller='qKrDxc']");
+  const id = container?.getAttribute("jsdata")?.split(";").pop();
+  const gifSrc = id ? findGifFromBatch(id) : undefined;
+  if (gifSrc) return insertGif(gifSrc); */
 
   const hrefObserver = new MutationObserver(() => {
-    const gifSrc = findGifFromHref(searchResult.href);
+    const gifSrc = findGifFromHref(a.href);
     if (!gifSrc) return;
     hrefObserver.disconnect();
+    if (a.querySelector(".gifs-autoplay-gif")) return;
     insertGif(gifSrc);
   });
 
-  hrefObserver.observe(searchResult, { attributeFilter: ["href"] });
-  searchResult.dispatchEvent(mouseEvent);
+  hrefObserver.observe(a, { attributeFilter: ["href"] });
+  mouseEvents.forEach((mouseEvent) => image.dispatchEvent(mouseEvent));
 }
 
-function findGifFromBatch(gifId: string) {
+/* function findGifFromBatch(gifId: string) {
   const idx = gifsBatchData.indexOf(gifId);
-  if (idx == -1) return;
-  const idx2 = gifsBatchData.indexOf('"http', idx);
-  if (idx2 == -1) return;
-  const idx3 = gifsBatchData.indexOf('"http', idx2 + 5);
-  if (idx3 == -1) return;
-  let idx4 = gifsBatchData.indexOf('"', idx3 + 5);
-  if (gifsBatchData[idx4 - 1] == "\\") idx4--;
-  const url = gifsBatchData.slice(idx3 + 1, idx4);
+  const endIdx = gifsBatchData.indexOf(".gif", idx);
+  const startIdx = gifsBatchData.lastIndexOf("http", endIdx);
+  if (idx == -1 || endIdx == -1 || startIdx == -1) return;
+  const url = gifsBatchData.slice(startIdx, endIdx + 4);
   return String.raw`${url}`.replace(/\\\\u003d/g, "=").replace(/\\u003d/g, "=");
-}
+} */
 
 function findGifFromHref(href: string) {
-  const decodedUrl = decodeURIComponent(href);
-  const startIdx = decodedUrl.indexOf("=http");
-  let endIdx = decodedUrl.indexOf(".gif&");
-  if (endIdx == -1) endIdx = decodedUrl.lastIndexOf(".gif");
-  return decodedUrl.slice(startIdx + 1, endIdx + 4);
+  const url = new URL(href);
+  /* if (!url.searchParams.has("imgurl"))
+    console.log("No imgurl param found. + " + href); */
+  return url.searchParams.get("imgurl");
 }
 
 function createGif(src: string) {
@@ -162,32 +153,40 @@ function createGif(src: string) {
   gif.style.setProperty("left", "0", "important");
   gif.style.setProperty("width", "100%", "important");
   gif.style.setProperty("height", "100%", "important");
+  // gif.style.setProperty("object-fit", "contain", "important");
   gif.loading = "lazy";
   gif.src = src;
   gif.onerror = () => {
     gif.remove();
-    //customLog("Gif error:" + src, true);
+    // customLog("Gif error:" + src, true);
   };
   return gif;
 }
 
 async function addGifsButton() {
   const gifsSearchParam = "&tbs=itp:animated";
-  if (location.href.includes(gifsSearchParam)) return;
+  const itemsContainer = document.querySelector(".crJ18e")!;
+  const activeItem = itemsContainer.querySelector(
+    ":scope > div:has([selected])"
+  )!;
+  const inactiveItem = itemsContainer.querySelector(
+    ":scope > div:not(:has([selected]))"
+  )!;
+  const activeItemText = activeItem.querySelector(".YmvwI")!.textContent;
+  const clone = inactiveItem?.cloneNode(true) as HTMLDivElement;
+  const cloneTextHolder = clone?.querySelector(".YmvwI") as HTMLDivElement;
 
-  const activeItem = document.querySelector("[aria-current=page]");
-  const nextItem = activeItem?.nextElementSibling;
-  if (!nextItem) return customLog("Next item not found!", true);
-
-  const clone = nextItem.cloneNode(true) as HTMLAnchorElement;
-  const img = document.createElement("img");
-  img.src = chrome.runtime.getURL("images/original.png");
-  img.style.height = "1rem";
-  img.style.verticalAlign = "middle";
-  clone.textContent = "";
-  clone.appendChild(img);
-  clone.href = location.href + gifsSearchParam;
-  activeItem.insertAdjacentElement("afterend", clone);
+  if (location.href.includes(gifsSearchParam)) {
+    activeItem.querySelector(".YmvwI")!.textContent = "GIFs";
+    cloneTextHolder.textContent = activeItemText;
+    const newLocation = location.href.replace(gifsSearchParam, "");
+    cloneTextHolder.closest("a")!.href = newLocation;
+    activeItem.insertAdjacentElement("beforebegin", clone);
+  } else {
+    cloneTextHolder.textContent = "GIFs";
+    cloneTextHolder.closest("a")!.href = location.href + gifsSearchParam;
+    activeItem.insertAdjacentElement("afterend", clone);
+  }
 }
 
 function customLog(message: string, isWarning = false) {
