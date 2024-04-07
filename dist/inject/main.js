@@ -66,9 +66,10 @@ function main() {
     sideResultsContainer = document.querySelector("#TWfxFb");
     if (searchResultsContainer)
         addGifsButton();
+    else
+        intervalSolution(3000);
     // loadGifsBatchData();
     observerSolution();
-    intervalSolution(3000);
     updateSearchResults();
 }
 /* function loadGifsBatchData() {
@@ -102,12 +103,14 @@ function intervalSolution(interval) {
 function updateSearchResults(container = document) {
     // const tmp = container == document ? "document" : "container";
     // customLog(`Executing updateSearchResults() on ${tmp}`);
-    container === null || container === void 0 ? void 0 : container.querySelectorAll("a img").forEach(updateSearchResult);
+    container === null || container === void 0 ? void 0 : container.querySelectorAll("a img[jsname='Q4LuWd'], a img.YQ4gaf").forEach(updateSearchResult);
 }
+const visitedImages = new Set();
 function updateSearchResult(image) {
-    const a = image.closest("a");
-    if (!a || a.querySelector(".gifs-autoplay-gif"))
+    if (visitedImages.has(image))
         return;
+    visitedImages.add(image);
+    const a = image.closest("a");
     const insertGif = (gifSrc) => {
         var _a;
         image.insertAdjacentElement("afterend", createGif(gifSrc));

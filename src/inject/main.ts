@@ -58,9 +58,9 @@ function main() {
   searchResultsContainer = document.querySelector("[jscontroller='XW992c']")!;
   sideResultsContainer = document.querySelector("#TWfxFb")!;
   if (searchResultsContainer) addGifsButton();
+  else intervalSolution(3000);
   // loadGifsBatchData();
   observerSolution();
-  intervalSolution(3000);
   updateSearchResults();
 }
 
@@ -98,13 +98,16 @@ function updateSearchResults(container: Document | Element | null = document) {
   // const tmp = container == document ? "document" : "container";
   // customLog(`Executing updateSearchResults() on ${tmp}`);
   container
-    ?.querySelectorAll<HTMLImageElement>("a img")
+    ?.querySelectorAll<HTMLImageElement>("a img[jsname='Q4LuWd'], a img.YQ4gaf")
     .forEach(updateSearchResult);
 }
 
+const visitedImages = new Set<HTMLImageElement>();
+
 function updateSearchResult(image: HTMLImageElement) {
-  const a = image.closest("a");
-  if (!a || a.querySelector(".gifs-autoplay-gif")) return;
+  if (visitedImages.has(image)) return;
+  visitedImages.add(image);
+  const a = image.closest("a")!;
 
   const insertGif = (gifSrc: string) => {
     image.insertAdjacentElement("afterend", createGif(gifSrc));
