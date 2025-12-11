@@ -1,0 +1,24 @@
+[gifs-autoplay-css-ready] {
+  .VKHL9c,
+  [jscontroller="M3v8m"] /* fallback */ {
+    /* for unknown reason, this container has permanent opacity 0 in additionally loaded components */
+    opacity: 1 !important;
+    transition: opacity 0.3s;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  /* should be .VKHL9c's direct & only child - images container - no unique fallback here */
+  .srKDX {
+    display: block !important;
+    column-count: var(--gifs-autoplay-column-count) !important;
+    column-gap: calc(20 / var(--gifs-autoplay-column-count)) !important;
+
+    & > * {
+      height: auto !important;
+      padding: 0 0 calc(20 / var(--gifs-autoplay-column-count)) !important;
+    }
+  }
+}

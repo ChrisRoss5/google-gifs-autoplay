@@ -3,7 +3,7 @@
   "author": "Kristijan Rosandić",
   "name": "Gifs autoplay for Google™",
   "description": "Autoplays gifs on Google™ Search Images.",
-  "version": "2.3.1",
+  "version": "3",
   "icons": {
     "128": "images/icon-128.png"
   },
@@ -200,6 +200,9 @@
         "*://www.google.co.zm/*",
         "*://www.google.co.zw/*",
         "*://www.google.cat/*"
+      ],
+      "css": [
+        "inject/main.css"
       ],
       "js": [
         "inject/main.js"
@@ -400,8 +403,12 @@
     "*://www.google.cat/*"
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "declarativeNetRequestWithHostAccess"
   ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
   "action": {
     "default_icon": "images/icon-64.png",
     "default_popup": "popup/index.html"

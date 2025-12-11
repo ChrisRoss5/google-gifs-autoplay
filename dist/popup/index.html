@@ -6,35 +6,39 @@
     <title>Gifs autoplay for Google™</title>
     <style>
       body {
-        display: flex;
-        align-items: center;
-        font-size: 1.5rem;
-        padding: 1rem;
-        background-size: cover;
-        text-wrap: nowrap;
-        user-select: none;
+        margin: 0;
       }
-      img {
-        width: 3rem;
-        height: 3rem;
-        padding-right: 0.5rem;
-      }
+
       a {
-        margin-right: 1rem;
-        padding-right: 1rem;
-        border-right: 2px solid #bbb;
         text-decoration: none;
-        color: #C55A11;
+        color: #c55a11;
+        padding: 1rem 1rem 0.5rem;
+        display: block;
+        font-size: 1.5rem;
+        white-space: nowrap;
+
+        &:hover {
+          text-shadow: 1px 1px 3px #bbb;
+        }
       }
-      a:hover {
-        text-shadow: 1px 1px 3px #bbb;
+
+      #settings {
+        font-size: 1rem;
+        padding-bottom: 1rem;
       }
+
       label {
-        padding-right: 0.5rem;
+        padding: 0.5rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        align-items: end;
       }
-      input {
-        width: 1.5rem;
-        height: 1.5rem;
+
+      #note {
+        flex: 1 1 100%;
+        font-size: 0.8rem;
+        font-style: italic;
       }
     </style>
   </head>
@@ -42,10 +46,39 @@
     <a
       href="https://chrome.google.com/webstore/detail/mfaepkdaodjclepbclabjbigjeohfdje"
       target="_blank"
-      >Gifs autoplay for Google™</a
     >
-    <label for="cbx">Enabled: </label>
-    <input type="checkbox" id="cbx" />
+      Gifs autoplay for Google™
+    </a>
+
+    <div id="settings">
+      <label>
+        Extension enabled:
+        <input type="checkbox" id="enabled-cbx" />
+      </label>
+      <div id="more-settings">
+        <label>
+          Use new solution:
+          <input type="checkbox" id="rules-cbx" />
+          <div id="note">
+            If disabled, old solution is applied but may not work in all cases
+            due to Google's limitations.
+          </div>
+        </label>
+        <label>
+          Column count:
+          <input
+            id="column-count-range-input"
+            type="range"
+            min="1"
+            max="20"
+            step="1"
+            value="3"
+          />
+          <span id="column-count">3</span>
+        </label>
+      </div>
+    </div>
+
     <script src="index.js"></script>
   </body>
 </html>

@@ -1,195 +1,146 @@
 "use strict";
 // ExecutionWorld: "ISOLATED"
 // Run at: "document_start"
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
+// The same regex is explained in declarativeNetRequest rules (background/service-worker.ts)
+const regex = /^https?:\/\/[^/]*google\.[^/]*\/(search|async\/(callback|imgv)).*[?&](tbm=isch|udm=2)/;
+(() => {
+    if (!regex.test(location.href))
+        return;
+    chrome.storage.sync.get(["enabled", "rulesetEnabled", "columnCount"], ({ enabled, rulesetEnabled, columnCount }) => {
+        customLog("Extension " + (enabled ? "enabled." : "disabled."));
+        if (!enabled)
+            return;
+        customLog("Custom user agent " + (rulesetEnabled ? "enabled." : "disabled."));
+        if (rulesetEnabled)
+            solutionA(columnCount);
+        else
+            solutionB();
     });
-};
-/* XHR LISTENER INJECTION AND BATCH DATA STRING SEARCHING
-
-// This way we can listen for messages from the page's XHR requests.
-// For future implementation on mobile devices...
-let gifsBatchData = "";
-
-(function injectXhr() {
-  const s = document.createElement("script");
-  s.src = chrome.runtime.getURL("inject/xhr.js");
-  s.onload = () => s.remove();
-  (document.head || document.documentElement).appendChild(s);
+    chrome.storage.onChanged.addListener((changes) => {
+        if (changes.enabled || changes.rulesetEnabled)
+            return setTimeout(() => location.reload(), 500);
+        if (changes.columnCount)
+            solutionA(Number(changes.columnCount.newValue));
+    });
 })();
-
-window.addEventListener("message", (event) => {
-  if (event.data.type != "GIFS_AUTOPLAY") return;
-  gifsBatchData += event.data.text;
-  updateSearchResults();
-});
-
-*/
-chrome.storage.sync.get("enabled", ({ enabled }) => {
-    /* Old regex: /client=img|tbm=isch|VisualFrontendUi|imgres/;
-    New Example:
-    https://www.google.com/search?q=gifs&sca_esv=84c550665db3d809&sca_upv=1&udm=2&biw=1078&bih=983&sxsrf=ACQVn09pOPXM0BOqaZWt9DTChQcyahfKSA%3A1712237442629&ei=gqsOZtHKJdmXxc8P4u2k8Ak&ved=0ahUKEwjRk6fE1aiFAxXZS_EDHeI2CZ4Q4dUDCBA&uact=5&oq=gifs&gs_lp=Egxnd3Mtd2l6LXNlcnAiBGdpZnNIAFAAWABwAHgAkAEAmAEAoAEAqgEAuAEDyAEAmAIAoAIAmAMAkgcAoAcA&sclient=gws-wiz-serp
-    */
-    const regexFilter = /\/search/;
-    const isImageSearch = regexFilter.test(location.href);
-    if (!isImageSearch)
-        return;
-    if (enabled === undefined) {
-        enabled = true;
-        chrome.storage.sync.set({ enabled });
+/* SOLUTIONS ------------------------------------------------------------------------------- */
+function solutionA(columnCount) {
+    document.documentElement.setAttribute("gifs-autoplay-css-ready", "true");
+    document.documentElement.style.setProperty("--gifs-autoplay-column-count", `${columnCount}`);
+}
+function solutionB() {
+    const resolvedImageEls = new Set();
+    let imageEls;
+    // let unparsedSearchSource = "";
+    injectXhrInterceptor();
+    listenForMessagesFromInterceptor();
+    if (DOMContentLoaded)
+        init();
+    else
+        addEventListener("DOMContentLoaded", init);
+    function init() {
+        updateImages(getParsedSearchSource(), true);
     }
-    customLog("Extension " + (enabled ? "enabled." : "disabled."));
-    if (!enabled)
-        return;
-    if (document.readyState != "loading")
-        main();
-    else
-        document.addEventListener("DOMContentLoaded", main);
-});
-chrome.runtime.onMessage.addListener(({ enabled }) => {
-    if (enabled)
-        main();
-    else
-        location.reload();
-});
-/* -------------------------------------- */
-const mouseEvents = ["mouseover", "mousedown"].map((type) => new MouseEvent(type, { bubbles: true }));
-let searchResultsContainer;
-let sideResultsContainer;
-function main() {
-    searchResultsContainer = document.querySelector("[jscontroller='XW992c']");
-    sideResultsContainer = document.querySelector("#TWfxFb");
-    if (searchResultsContainer)
-        addGifsButton();
-    else
-        intervalSolution(3000);
-    // loadGifsBatchData();
-    observerSolution();
-    updateSearchResults();
-}
-/* function loadGifsBatchData() {
-  document.querySelectorAll("script").forEach((script) => {
-    gifsBatchData += script.textContent || "";
-  });
-} */
-function observerSolution() {
-    const searchResultsObserver = new MutationObserver((mutations) => {
-        for (const mutation of mutations)
-            for (const container of mutation.addedNodes)
-                if (container instanceof HTMLElement)
-                    updateSearchResults(container);
-    });
-    const sideResultsObserver = new MutationObserver(() => {
-        updateSearchResults(sideResultsContainer);
-    });
-    if (searchResultsContainer)
-        searchResultsObserver.observe(searchResultsContainer, {
-            childList: true,
+    function injectXhrInterceptor() {
+        const s = document.createElement("script");
+        s.src = chrome.runtime.getURL("inject/xhr.js");
+        s.onload = () => s.remove();
+        document.documentElement.appendChild(s);
+    }
+    function listenForMessagesFromInterceptor() {
+        addEventListener("message", (event) => {
+            if (event.data.type !== "GIFS_AUTOPLAY")
+                return;
+            // unparsedSearchSource += event.data.text;
+            setTimeout(() => updateImages(event.data.text, false), 200);
+            setTimeout(() => updateImages(event.data.text, false), 2000); // in case of mega slow CPU
         });
-    if (sideResultsContainer)
-        sideResultsObserver.observe(sideResultsContainer, {
-            childList: true,
-            subtree: true,
+    }
+    function getParsedSearchSource() {
+        let searchSource = "";
+        const scriptEls = document.querySelectorAll("script");
+        scriptEls.forEach((script) => (searchSource += script.textContent));
+        return searchSource;
+    }
+    function updateImages(searchSource, isSourceParsed = true) {
+        let searchIndex = 0;
+        imageEls = document.querySelectorAll("img");
+        imageEls.forEach((imageEl) => {
+            if (resolvedImageEls.has(imageEl))
+                return;
+            const containerEl = imageEl.closest("[data-docid]");
+            if (!containerEl)
+                return;
+            const id = containerEl === null || containerEl === void 0 ? void 0 : containerEl.dataset.docid;
+            if (!id)
+                return;
+            const result = findGifSrc(id, searchSource, searchIndex, isSourceParsed);
+            if (!result)
+                return;
+            searchIndex = result.index;
+            updateImage(imageEl, result.gifSrc);
+            resolvedImageEls.add(imageEl);
         });
-}
-function intervalSolution(interval) {
-    setInterval(updateSearchResults, interval);
-}
-function updateSearchResults(container = document) {
-    // const tmp = container == document ? "document" : "container";
-    // customLog(`Executing updateSearchResults() on ${tmp}`);
-    container === null || container === void 0 ? void 0 : container.querySelectorAll("a img[jsname='Q4LuWd'], a img.YQ4gaf").forEach(updateSearchResult);
-}
-const visitedImages = new Set();
-function updateSearchResult(image) {
-    if (visitedImages.has(image))
-        return;
-    visitedImages.add(image);
-    const a = image.closest("a");
-    const insertGif = (gifSrc) => {
+    }
+    function updateImage(imageEl, gifSrc) {
         var _a;
-        image.insertAdjacentElement("afterend", createGif(gifSrc));
-        image.loading = "lazy";
-        (_a = image.parentElement) === null || _a === void 0 ? void 0 : _a.style.setProperty("position", "relative", "important");
-    };
-    /* const container = image.closest("[jscontroller='qKrDxc']");
-    const id = container?.getAttribute("jsdata")?.split(";").pop();
-    const gifSrc = id ? findGifFromBatch(id) : undefined;
-    if (gifSrc) return insertGif(gifSrc); */
-    const hrefObserver = new MutationObserver(() => {
-        const gifSrc = findGifFromHref(a.href);
-        if (!gifSrc)
+        imageEl.loading = "lazy";
+        (_a = imageEl.parentElement) === null || _a === void 0 ? void 0 : _a.style.setProperty("position", "relative", "important");
+        imageEl.insertAdjacentElement("afterend", createGif(gifSrc));
+    }
+    function findGifSrc(id, searchSource, searchIndex = 0, isSourceParsed = true) {
+        const target = isSourceParsed ? `"${id}",` : `"${id}\\",`;
+        searchIndex = searchSource.indexOf(target, searchIndex);
+        if (searchIndex === -1)
             return;
-        hrefObserver.disconnect();
-        if (a.querySelector(".gifs-autoplay-gif"))
-            return;
-        insertGif(gifSrc);
-    });
-    hrefObserver.observe(a, { attributeFilter: ["href"] });
-    mouseEvents.forEach((mouseEvent) => image.dispatchEvent(mouseEvent));
-}
-/* function findGifFromBatch(gifId: string) {
-  const idx = gifsBatchData.indexOf(gifId);
-  const endIdx = gifsBatchData.indexOf(".gif", idx);
-  const startIdx = gifsBatchData.lastIndexOf("http", endIdx);
-  if (idx == -1 || endIdx == -1 || startIdx == -1) return;
-  const url = gifsBatchData.slice(startIdx, endIdx + 4);
-  return String.raw`${url}`.replace(/\\\\u003d/g, "=").replace(/\\u003d/g, "=");
-} */
-function findGifFromHref(href) {
-    const url = new URL(href);
-    /* if (!url.searchParams.has("imgurl"))
-      console.log("No imgurl param found. + " + href); */
-    return url.searchParams.get("imgurl");
-}
-function createGif(src) {
-    const gif = document.createElement("img");
-    gif.className = "gifs-autoplay-gif";
-    gif.style.setProperty("position", "absolute", "important");
-    gif.style.setProperty("top", "0", "important");
-    gif.style.setProperty("left", "0", "important");
-    gif.style.setProperty("width", "100%", "important");
-    gif.style.setProperty("height", "100%", "important");
-    // gif.style.setProperty("object-fit", "contain", "important");
-    gif.loading = "lazy";
-    gif.src = src;
-    gif.onerror = () => {
-        gif.remove();
-        // customLog("Gif error:" + src, true);
-    };
-    return gif;
-}
-function addGifsButton() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const gifsSearchParam = "&tbs=itp:animated";
-        const itemsContainer = document.querySelector(".crJ18e");
-        const activeItem = itemsContainer.querySelector(":scope > div:has([selected])");
-        const inactiveItem = itemsContainer.querySelector(":scope > div:not(:has([selected]))");
-        const activeItemText = activeItem.querySelector(".YmvwI").textContent;
-        const clone = inactiveItem === null || inactiveItem === void 0 ? void 0 : inactiveItem.cloneNode(true);
-        const cloneTextHolder = clone === null || clone === void 0 ? void 0 : clone.querySelector(".YmvwI");
-        if (location.href.includes(gifsSearchParam)) {
-            activeItem.querySelector(".YmvwI").textContent = "GIFs";
-            cloneTextHolder.textContent = activeItemText;
-            const newLocation = location.href.replace(gifsSearchParam, "");
-            cloneTextHolder.closest("a").href = newLocation;
-            activeItem.insertAdjacentElement("beforebegin", clone);
+        for (let i = 0; i < 2; i++) {
+            const startQuoteIndex = searchSource.indexOf('"http', searchIndex);
+            if (startQuoteIndex === -1)
+                return;
+            const urlStartIndex = startQuoteIndex + 1;
+            const urlEndIndex = searchSource.indexOf(isSourceParsed ? '"' : '\\"', urlStartIndex);
+            if (urlEndIndex === -1)
+                return;
+            let rawUrl = searchSource.slice(urlStartIndex, urlEndIndex);
+            try {
+                rawUrl = JSON.parse(`"${rawUrl}"`);
+            }
+            catch (e) {
+                return;
+            }
+            if (rawUrl.includes("gstatic.") && !rawUrl.endsWith(".gif")) {
+                searchIndex = urlEndIndex;
+                continue;
+            }
+            return { gifSrc: rawUrl, index: searchIndex };
         }
-        else {
-            cloneTextHolder.textContent = "GIFs";
-            cloneTextHolder.closest("a").href = location.href + gifsSearchParam;
-            activeItem.insertAdjacentElement("afterend", clone);
-        }
-    });
+    }
+    function createGif(src) {
+        const gif = document.createElement("img");
+        gif.style.setProperty("position", "absolute", "important");
+        gif.style.setProperty("top", "0", "important");
+        gif.style.setProperty("left", "0", "important");
+        gif.style.setProperty("width", "100%", "important");
+        gif.style.setProperty("height", "100%", "important");
+        // gif.style.setProperty("object-fit", "contain", "important");
+        gif.loading = "lazy";
+        gif.src = src;
+        gif.onerror = () => {
+            gif.remove();
+            // customLog("Gif error:" + src, true);
+        };
+        return gif;
+    }
 }
+/* UTILS ------------------------------------------------------------------------------- */
 function customLog(message, isWarning = false) {
     message = "%c[Gifs autoplay for Google™]%c " + message;
     if (isWarning)
         message += " Please report this issue to:\n" + "kristijan.ros@gmail.com";
     console[isWarning ? "warn" : "log"](message, "color: #C55A11", "color: initial");
 }
+// NOT using readyState because we want to catch the moment when DOMContentLoaded has fired,
+// meaning that the deferred and module scripts have executed!
+// https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
+let DOMContentLoaded = false;
+addEventListener("DOMContentLoaded", () => (DOMContentLoaded = true));

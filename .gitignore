@@ -2,10 +2,3 @@
 *.zip
 _metadata
 node_modules
-
-# firefox
-firefox/*
-!firefox/manifest.json
-!firefox/popup
-firefox/popup/*
-!firefox/popup/index.html
