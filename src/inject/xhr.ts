@@ -1,5 +1,7 @@
-// ExecutionWorld: "MAIN"
+// ExecutionWorld: "MAIN" (declared as a content script in manifest.json)
 // Run at: "document_start"
+// Runs unconditionally on matched pages, even when the extension is toggled off —
+// it only posts messages that inject/main.js ignores in that case.
 
 const oldXHROpen = XMLHttpRequest.prototype.open;
 

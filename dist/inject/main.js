@@ -32,7 +32,6 @@ function solutionB() {
     const resolvedImageEls = new Set();
     let imageEls;
     // let unparsedSearchSource = "";
-    injectXhrInterceptor();
     listenForMessagesFromInterceptor();
     if (DOMContentLoaded)
         init();
@@ -41,15 +40,13 @@ function solutionB() {
     function init() {
         updateImages(getParsedSearchSource(), true);
     }
-    function injectXhrInterceptor() {
-        const s = document.createElement("script");
-        s.src = chrome.runtime.getURL("inject/xhr.js");
-        s.onload = () => s.remove();
-        document.documentElement.appendChild(s);
-    }
+    // inject/xhr.js is declared in the manifest as a MAIN-world content script.
+    // Script-tag injection was dropped because Firefox subjects content-script-inserted
+    // elements to the page's CSP, which can block the extension URL.
     function listenForMessagesFromInterceptor() {
         addEventListener("message", (event) => {
-            if (event.data.type !== "GIFS_AUTOPLAY")
+            var _a;
+            if (((_a = event.data) === null || _a === void 0 ? void 0 : _a.type) !== "GIFS_AUTOPLAY")
                 return;
             // unparsedSearchSource += event.data.text;
             setTimeout(() => updateImages(event.data.text, false), 200);

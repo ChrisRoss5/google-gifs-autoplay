@@ -7,6 +7,12 @@ const columnCountEl = document.querySelector<HTMLInputElement>(
 const columnCountValue =
   document.querySelector<HTMLSpanElement>("#column-count")!;
 const columnCountLabel = columnCountEl.closest("label") as HTMLElement;
+const storeLink = document.querySelector<HTMLAnchorElement>("a")!;
+
+// html hardcodes the Chrome Web Store link
+if (chrome.runtime.getURL("").startsWith("moz-extension:"))
+  storeLink.href =
+    "https://addons.mozilla.org/en-US/firefox/addon/gifs-autoplay-for-google";
 
 chrome.storage.sync.get(
   ["enabled", "rulesetEnabled", "columnCount"],

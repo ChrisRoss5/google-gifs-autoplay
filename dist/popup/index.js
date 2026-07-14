@@ -5,6 +5,11 @@ const rulesCbx = document.querySelector("#rules-cbx");
 const columnCountEl = document.querySelector("#column-count-range-input");
 const columnCountValue = document.querySelector("#column-count");
 const columnCountLabel = columnCountEl.closest("label");
+const storeLink = document.querySelector("a");
+// html hardcodes the Chrome Web Store link
+if (chrome.runtime.getURL("").startsWith("moz-extension:"))
+    storeLink.href =
+        "https://addons.mozilla.org/en-US/firefox/addon/gifs-autoplay-for-google";
 chrome.storage.sync.get(["enabled", "rulesetEnabled", "columnCount"], ({ enabled, rulesetEnabled, columnCount }) => {
     enabledCbx.checked = !!enabled;
     rulesCbx.checked = !!rulesetEnabled;
