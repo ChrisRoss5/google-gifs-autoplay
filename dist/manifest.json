@@ -3,7 +3,7 @@
   "author": "Kristijan Rosandić",
   "name": "Gifs autoplay for Google™",
   "description": "Autoplays gifs on Google™ Search Images.",
-  "version": "3",
+  "version": "3.0.0.1",
   "icons": {
     "128": "images/icon-128.png"
   },
